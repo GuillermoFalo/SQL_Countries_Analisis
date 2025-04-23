@@ -1,0 +1,130 @@
+-- CHAT GPT Project
+-- 1) Basic Country & City Analysis
+-- A) TOP 10 most populated countries
+select name Country, population
+from countries
+order by population DESC
+limit 10;
+
+-- B) Select Top 10 cities most populated
+SELECT C.name Capital , Co.name Country, Co.population
+from countries Co
+join cities C on C.country_code = Co.code
+order by population DESC
+limit 10;
+
+-- C) Select Top 10 coties (max 1 per country) most populated
+SELECT 
+    C.name AS Capital, 
+    Co.name AS Country, 
+    Co.population AS Country_Population
+FROM countries Co
+JOIN cities C 
+    ON Co.code = C.country_code
+WHERE C.population = (
+    SELECT MAX(population)
+    FROM cities
+    WHERE country_code = Co.code
+)
+ORDER BY Co.population DESC
+LIMIT 10;
+
+-- D) Average population of cities per country
+select country_code Country, Avg(population)
+from cities
+group BY country_code
+order by AVG(population) DESC;
+
+-- 2. City-Country relationship
+-- A) List all cities and their countries
+SELECT name City, country_code Country
+from cities;
+
+select Ci.name City, Co.name Country
+from cities Ci
+JOIN countries Co On Co.code = Ci.country_code;
+
+-- B) Country with the most cities
+select Co.name Country, count(Ci.name) Number_of_Cities
+from cities Ci
+JOIN countries Co On Co.code = Ci.country_code
+group by Co.name
+order by count(Ci.name) DESC
+limit 1;
+
+-- C) For each country list the most populated city
+select Co.Name Country, Ci.name City, Ci.population City_Population 
+from cities Ci
+join countries Co on Co.code = Ci.country_code
+where Ci.population = 
+  (
+  select max(population)
+  from cities
+  where country_code = Co.code);
+  
+  -- 3. Language Analysis
+  -- A) List official languages per country
+  -- Languages spoke in the country
+  select country_code Country, COUNT(language) Languages_per_country
+  from country_languagies
+  group by country_code
+  order by COUNT(language) DESC;
+  -- Official languages per country
+  select country_code Country, COUNT(language) Official_Languages_per_country
+  from country_languagies
+  where is_official= 'T'
+  group by country_code
+  order by COUNT(language) DESC;
+  
+-- B) Most spoken language globally
+select L.language, SUM(L.percentage*C.population/100) Estimated_Speakers
+from country_languagies L
+JOIN countries C on C.code = L.country_code
+group by L.language
+order by Estimated_Speakers DESC;
+ 
+ -- B*) Wondering if Chinese is split into dialects such as Mandarin or they all grouped under Chinese
+select country_code, language, percentage
+from country_languagies
+where country_code = 'CHN'
+order by percentage desc;
+
+-- 4. Economic Insights
+-- A) Top 10 countries per GNP per capital
+-- First overall GNP
+select name Country, gnp Total_GNP
+from countries
+order by gnp Desc;
+
+-- GNP per capita
+select name Country, (gnp/population) GNP_per_Capita
+from countries
+where population > 0
+order by gnp Desc
+limit 10;
+
+-- B) Avg Life Expectancy by continent
+select continent, ROUND(AVG(life_expectancy),0) Avg_Life_expectancy_per_Continent
+from countries
+where life_expectancy is not NULL
+group by continent
+ORDER by Avg_Life_expectancy_per_Continent DESC;
+
+-- EXTRA
+-- Find hte official langiage with least % of speakers
+SELECT 
+    cl.country_code Country,
+    cl.language Language,
+    cl.percentage AS Estimated_Speakers_Percentage
+FROM country_languagies cl
+JOIN (
+    -- Subquery gets the dominant language per country
+    SELECT country_code, MAX(percentage) AS max_percentage
+    FROM country_languagies
+    WHERE is_official = 'T'
+    GROUP BY country_code
+) AS dom
+ON cl.country_code = dom.country_code 
+   AND cl.percentage = dom.max_percentage
+WHERE cl.is_official = 'T' and percentage < 40
+ORDER BY cl.percentage ASC;
